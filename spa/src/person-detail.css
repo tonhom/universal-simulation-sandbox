@@ -1,0 +1,129 @@
+.favor {
+  padding: 16px 18px;
+  margin: 0 0 18px;
+  border: 1px solid #66552b;
+  background: linear-gradient(90deg, #2a2415, #121a20);
+  border-radius: 8px;
+}
+.favor b,
+.artifact b {
+  display: block;
+}
+.favor b {
+  font: 20px Georgia;
+  margin: 6px 0;
+}
+.favor span,
+.artifact span {
+  color: var(--muted);
+  font-size: 13px;
+}
+.artifact {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  margin: 8px 0;
+}
+.artifact p {
+  color: var(--muted);
+  margin: 0.4rem 0;
+}
+.samsara {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  padding: 16px 18px;
+  margin: 0 0 18px;
+  border: 1px solid #4f4167;
+  background: linear-gradient(90deg, #20192b, #111921);
+  border-radius: 8px;
+}
+.samsara b {
+  display: block;
+  font-size: 18px;
+  color: #cbb4ff;
+  margin-top: 5px;
+}
+.samsara p {
+  grid-column: 1/-1;
+  color: var(--muted);
+  margin: 0;
+}
+@media (max-width: 800px) {
+  .samsara {
+    grid-template-columns: 1fr;
+  }
+}
+.event-legend {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 8px;
+}
+.event-legend span,
+.importance-badge {
+  padding: 3px 7px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.event-legend .notable,
+.importance-notable .importance-badge {
+  background: #243342;
+  color: #b9c8d5;
+}
+.event-legend .major,
+.importance-major .importance-badge {
+  background: #194b3b;
+  color: #75f0bd;
+}
+.event-legend .historic,
+.importance-historic .importance-badge {
+  background: #5a4217;
+  color: #ffd979;
+}
+.event-legend .cosmic,
+.importance-cosmic .importance-badge {
+  background: #4b286b;
+  color: #e4bdff;
+}
+.event-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.event-meta small {
+  color: var(--muted);
+  letter-spacing: 0;
+}
+.event.importance-major,
+.personal-event.importance-major {
+  border-left-color: #62e6b2;
+  background: linear-gradient(90deg, #142b24, #101821);
+}
+.event.importance-historic,
+.personal-event.importance-historic {
+  border-left-color: #f3c969;
+  background: linear-gradient(90deg, #302817, #121920);
+  box-shadow: inset 0 0 22px #6c531522;
+}
+.event.importance-cosmic,
+.personal-event.importance-cosmic {
+  border-left-color: #c57aff;
+  background: linear-gradient(90deg, #291936, #111820);
+  box-shadow: inset 0 0 28px #9d45d522;
+}
+.event.importance-historic > b,
+.event.importance-cosmic > b {
+  font-size: 16px;
+  color: #fff;
+}
+.personal-event.importance-major,
+.personal-event.importance-historic,
+.personal-event.importance-cosmic {
+  border-left-width: 3px;
+  border-left-style: solid;
+  padding-left: 14px;
+}

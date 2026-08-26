@@ -1,0 +1,19 @@
+{
+  "name": "universal-simulation-sandbox-ui",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@vitejs/plugin-vue": "latest",
+    "three": "^0.185.1",
+    "vite": "latest",
+    "vue": "latest"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.6"
+  }
+}

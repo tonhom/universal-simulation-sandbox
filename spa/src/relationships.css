@@ -1,0 +1,106 @@
+.relationship-controls {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+  margin: 18px 0;
+}
+.relationship-controls button {
+  background: #25313d;
+  color: #fff;
+}
+.relationship-controls button.active {
+  background: var(--jade);
+  color: #07120e;
+}
+.relationship-controls label {
+  margin: 0;
+}
+.relationship-controls select {
+  display: block;
+  margin-top: 5px;
+  padding: 8px;
+  background: #091017;
+  border: 1px solid var(--line);
+  color: #fff;
+}
+.relationship-list {
+  display: grid;
+  gap: 10px;
+}
+.relationship-card {
+  display: grid;
+  grid-template-columns: 1fr 220px 1fr;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #101821;
+  overflow: hidden;
+}
+.relationship-card.cross {
+  border-color: #60427b;
+  background: linear-gradient(90deg, #101821, #21152c, #101821);
+}
+.relationship-card > button {
+  height: 100%;
+  text-align: left;
+  background: transparent;
+  color: #fff;
+  padding: 16px;
+}
+.relationship-card > button:last-child {
+  text-align: right;
+}
+.relationship-card > button small,
+.relationship-card > button b,
+.relationship-card > div span {
+  display: block;
+}
+.relationship-card > div {
+  text-align: center;
+}
+.relationship-card > div strong {
+  color: var(--gold);
+}
+.relationship-card > div span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.relationship-card i {
+  display: block;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--jade), transparent);
+  margin-top: 8px;
+}
+.world-favored {
+  margin: 0 0 18px;
+}
+.world-favored-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1px;
+  background: var(--line);
+}
+.world-favored-list button {
+  background: #101821;
+  border: 0;
+}
+.world-favored-list button span,
+.world-favored-list button small {
+  display: block;
+  margin-top: 4px;
+}
+.world-favored-list button span {
+  color: var(--gold);
+  font-size: 12px;
+}
+@media (max-width: 800px) {
+  .relationship-card {
+    grid-template-columns: 1fr;
+  }
+  .relationship-card > button:last-child {
+    text-align: left;
+  }
+  .world-favored-list {
+    grid-template-columns: 1fr;
+  }
+}

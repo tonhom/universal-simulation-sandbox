@@ -1,0 +1,73 @@
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 9px;
+}
+.filter-bar label {
+  margin: 0;
+  font-size: 11px;
+}
+.filter-bar select,
+.creation-grid select {
+  display: block;
+  min-width: 120px;
+  margin-top: 4px;
+  padding: 7px;
+  background: #091017;
+  border: 1px solid var(--line);
+  color: #fff;
+  border-radius: 5px;
+}
+.person-virtual {
+  position: relative;
+  height: 250px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+}
+.person-space {
+  position: relative;
+}
+.person-window {
+  position: absolute;
+  inset: 0 0 auto;
+}
+.person-row {
+  height: 62px;
+  overflow: hidden;
+}
+.world-history {
+  margin-top: 18px;
+}
+.world-history-list {
+  max-height: 480px;
+  overflow-y: auto;
+}
+.creation-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: 0 18px;
+}
+.creation-grid label {
+  margin: 9px 0;
+}
+.creation-grid output {
+  float: right;
+  color: var(--jade);
+}
+dialog[open] {
+  width: min(820px, 92vw);
+  max-height: 88vh;
+  overflow-y: auto;
+  inset: 5vh auto auto 50%;
+}
+@media (max-width: 700px) {
+  .creation-grid {
+    grid-template-columns: 1fr;
+  }
+  .filter-bar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+}

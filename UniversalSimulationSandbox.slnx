@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/UniversalSimulation.Domain/UniversalSimulation.Domain.csproj" />
+    <Project Path="src/UniversalSimulation.Engine/UniversalSimulation.Engine.csproj" />
+    <Project Path="src/UniversalSimulation.Application/UniversalSimulation.Application.csproj" />
+    <Project Path="src/UniversalSimulation.Infrastructure/UniversalSimulation.Infrastructure.csproj" />
+    <Project Path="src/UniversalSimulation.Worker/UniversalSimulation.Worker.csproj" />
+    <Project Path="src/UniversalSimulation.Api/UniversalSimulation.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/"><Project Path="tests/UniversalSimulationSandbox.Tests/UniversalSimulationSandbox.Tests.csproj" /></Folder>
+</Solution>

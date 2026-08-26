@@ -1,0 +1,102 @@
+.refinement-ledger {
+  padding: 0;
+  margin: 22px 0;
+}
+.refinement-ledger > .section-title {
+  margin-bottom: 12px;
+}
+.refinement-ledger h2,
+.refinement-card h3 {
+  margin: 4px 0;
+}
+.refinement-card {
+  padding: 20px;
+  margin-bottom: 14px;
+  border: 1px solid #7b6533;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #1c1a18, #101922 70%);
+  box-shadow: inset 3px 0 #f3c969;
+}
+.refinement-title {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.refinement-title p,
+.refinement-card p {
+  color: var(--muted);
+  margin: 5px 0;
+}
+.scale-badge {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: #493c22;
+  color: var(--gold);
+  font-weight: 800;
+}
+.refinement-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 16px 0;
+}
+.refinement-summary > div {
+  padding: 12px;
+  border: 1px solid var(--line);
+  background: #0d141c;
+}
+.refinement-summary small,
+.refinement-summary b {
+  display: block;
+}
+.refinement-summary b {
+  margin-top: 6px;
+}
+.refinement-flow {
+  display: grid;
+  grid-template-columns: 1.35fr repeat(3, 1fr);
+  gap: 8px;
+}
+.flow-step {
+  position: relative;
+  min-height: 120px;
+  padding: 13px;
+  border-radius: 7px;
+  background: #131d27;
+  border-top: 2px solid #5c7184;
+}
+.flow-step.preparation { border-color: var(--jade); }
+.flow-step.next { border-color: var(--gold); }
+.flow-step ol {
+  padding-left: 20px;
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+.flow-step li { margin-bottom: 4px; }
+.refinement-dialog { max-width: 560px; }
+.refinement-dialog p { color: var(--muted); line-height: 1.5; }
+.refinement-dialog select {
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px;
+  color: #fff;
+  border: 1px solid var(--line);
+  background: #091017;
+}
+.check-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.check-label input { width: auto; margin: 0; }
+.scenario-warning {
+  padding: 12px;
+  border-left: 3px solid var(--gold);
+  background: #201c13;
+  color: #d8cda9;
+}
+@media (max-width: 1000px) {
+  .refinement-summary,
+  .refinement-flow { grid-template-columns: 1fr; }
+}

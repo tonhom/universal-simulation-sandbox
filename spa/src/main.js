@@ -1,0 +1,11 @@
+import { createApp } from "vue";
+import App from "./App.vue";
+import "./style.css";
+import "./person-detail.css";
+import "./danger.css";
+import "./detail-systems.css";
+import "./dashboard-th.css";
+import "./relationships.css";
+import "./cosmic-refinement.css";
+import "./cosmic-visualizer.css";
+createApp(App).mount("#app");

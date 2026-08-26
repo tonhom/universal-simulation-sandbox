@@ -652,7 +652,7 @@ function makeGalaxy() {
   geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
   const disk = new THREE.Points(geometry, new THREE.PointsMaterial({ size: .023, vertexColors: true, transparent: true, opacity: .94, blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true }));
   root.add(disk);
-  root.rotation.x = .24;
+  root.rotation.x = .78;
   root.userData.armTarget = new THREE.Vector3(3.4, 1.1, .1);
   return root;
 }
@@ -1167,10 +1167,16 @@ function applyScenario(time) {
     });
 
     galaxyGroup.visible = p >= .39 && p < .72;
-    galaxyGroup.scale.setScalar(.32 + smooth(p, .39, .67) * 1.65);
-    galaxyGroup.rotation.z = -.12 + time * .042;
+    const galaxyReveal = smooth(p, .39, .49);
+    const galaxyTopDown = smooth(p, .47, .57);
+    const galaxyArmApproach = smooth(p, .57, .69);
+    galaxyGroup.scale.setScalar(.32 + smooth(p, .39, .57) * 1.25 + galaxyArmApproach * .4);
+    galaxyGroup.rotation.x = THREE.MathUtils.lerp(.78, .035, galaxyTopDown);
+    galaxyGroup.rotation.y = THREE.MathUtils.lerp(-.16, 0, galaxyTopDown);
+    galaxyGroup.rotation.z = -.12 + time * .048;
     galaxyGroup.children.forEach((layer) => {
-      layer.material.opacity = .94 * smooth(p, .39, .47) * (1 - smooth(p, .64, .72));
+      layer.rotation.z = time * .014;
+      layer.material.opacity = .94 * galaxyReveal * (1 - smooth(p, .67, .72));
     });
 
     solarSystem.visible = p >= .64 && p < .855;
@@ -1246,30 +1252,39 @@ function applyScenario(time) {
       const flightClock=time*.065+Math.max(0,p-.885)*52;
       const latitude=Math.sin(flightClock*.37)*.62+Math.sin(flightClock*.13+1.7)*.2;
       const longitude=flightClock*.73+Math.sin(flightClock*.21)*.48;
-      const nextClock=flightClock+.055;
-      const nextLatitude=Math.sin(nextClock*.37)*.62+Math.sin(nextClock*.13+1.7)*.2;
-      const nextLongitude=nextClock*.73+Math.sin(nextClock*.21)*.48;
+      const horizonClock=flightClock+.34;
+      const horizonLatitude=Math.sin(horizonClock*.37)*.62+Math.sin(horizonClock*.13+1.7)*.2;
+      const horizonLongitude=horizonClock*.73+Math.sin(horizonClock*.21)*.48;
       const normal=new THREE.Vector3(Math.cos(latitude)*Math.cos(longitude),Math.sin(latitude),Math.cos(latitude)*Math.sin(longitude)).normalize();
-      const nextNormal=new THREE.Vector3(Math.cos(nextLatitude)*Math.cos(nextLongitude),Math.sin(nextLatitude),Math.cos(nextLatitude)*Math.sin(nextLongitude)).normalize();
+      const horizonNormal=new THREE.Vector3(Math.cos(horizonLatitude)*Math.cos(horizonLongitude),Math.sin(horizonLatitude),Math.cos(horizonLatitude)*Math.sin(horizonLongitude)).normalize();
       const terrainHeight=surfaceWorld.userData.terrainHeightAt(normal)*surfaceEntry;
-      const nextHeight=surfaceWorld.userData.terrainHeightAt(nextNormal)*surfaceEntry;
       const droneAltitude=1.12+Math.sin(flightClock*.29)*.2+Math.sin(flightClock*.071)*.13;
       camera.position.copy(normal).multiplyScalar(surfaceWorld.userData.radius+terrainHeight+droneAltitude+(1-surfaceEntry)*1.5);
-      const target=nextNormal.multiplyScalar(surfaceWorld.userData.radius+nextHeight+.035);
-      camera.up.copy(normal);
+      const forward=horizonNormal.addScaledVector(normal,-horizonNormal.dot(normal)).normalize();
+      const right=new THREE.Vector3().crossVectors(forward,normal).normalize();
+      const target=camera.position.clone().addScaledVector(forward,3.8).addScaledVector(normal,-.38);
+      camera.up.copy(normal).addScaledVector(right,Math.sin(flightClock*.19)*.055).normalize();
       camera.lookAt(target);
-      camera.fov=52-Math.sin(flightClock*.17)*3;
+      camera.fov=57-Math.sin(flightClock*.17)*2.5;
     } else {
       if (p < .48) {
         camera.position.set(0, .25, 9.6 - smooth(p, .23, .48) * 1.3);
         camera.lookAt(0, 0, 0);
+      } else if (p < .57) {
+        const overheadMove = smooth(p, .48, .57);
+        camera.position.set(
+          Math.sin(overheadMove * Math.PI) * .28,
+          THREE.MathUtils.lerp(.25, 0, overheadMove),
+          THREE.MathUtils.lerp(8.3, 7.7, overheadMove),
+        );
+        camera.lookAt(0, 0, 0);
       } else if (p < .69) {
-        const armZoom = smooth(p, .48, .69);
-        camera.position.set(armZoom * 2.75, armZoom * .82, 8.3 - armZoom * 4.15);
+        const armZoom = smooth(p, .57, .69);
+        camera.position.set(armZoom * 2.75, armZoom * .82, 7.7 - armZoom * 3.55);
         camera.lookAt(3.4 * armZoom, 1.1 * armZoom, 0);
       } else if (p < .83) {
         const systemZoom = smooth(p, .69, .83);
-        const widePosition = new THREE.Vector3(0, .55, 6.3);
+        const widePosition = new THREE.Vector3(2.75, .82, 4.15);
         const nearPlanet = focusPosition.clone().add(new THREE.Vector3(0, .16, .78));
         camera.position.copy(widePosition.lerp(nearPlanet, systemZoom));
         camera.lookAt(focusPosition);

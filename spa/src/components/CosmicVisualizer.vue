@@ -7,6 +7,8 @@ import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
 
 const props = defineProps({ universe: { type: Object, default: null } });
 const emit = defineEmits(["close"]);
+const observatory=ref(null);
+const displayMode=ref(false);
 
 const scenarios = [
   {
@@ -14,7 +16,7 @@ const scenarios = [
     type: "genesis",
     name: "การกำเนิดจักรวาล",
     subtitle: "จาก Origin Singularity สู่ดวงดาว โลก และเมล็ดพันธุ์ชีวิต",
-    duration: 100,
+    duration: 135,
     accent: "#63f5d0",
     phases: [
       [0, "ความว่างเปล่า", "ยังไม่มี Space, Time หรือสิ่งที่ผู้สังเกตการณ์เรียกว่าอนุภาค"],
@@ -27,11 +29,13 @@ const scenarios = [
       [43, "Galactic Seed", "จุดแสงขนาดเล็กปรากฏในห้วงอวกาศและเริ่มเผยรูปร่างทรงจาน"],
       [52, "Galactic Flow", "จานกาแล็กซีหมุนวนและเผยแขนเกลียวคล้ายทางช้างเผือก"],
       [64, "ดาวฤกษ์ดวงแรก", "กลุ่มก๊าซยุบตัวและจุดปฏิกิริยาตามแขนกาแล็กซี"],
-      [72, "ระบบดาวก่อตัว", "ดาวฤกษ์หนึ่งดวงกับดาวเคราะห์แปดดวงก่อตัวจากจานมวลสารในแขนกาแล็กซี"],
-      [80, "ดาวเคราะห์มีชีวิต", "กล้องละจากดาวฤกษ์และติดตามดาวเคราะห์ดวงที่สามพร้อมดวงจันทร์บริวาร"],
-      [89, "โลกยุคพายุ", "มหาสมุทร ภูเขา แม่น้ำ เมฆ ฝน ฟ้าผ่า และภูเขาไฟกำลังปรับสมดุล"],
-      [94, "Life Genesis", "พืช ต้นไม้ ใบหญ้า และสิ่งมีชีวิตแรกเริ่มแพร่กระจาย"],
-      [98, "รุ่งอรุณแห่งอารยธรรม", "หลังท้องฟ้าและดวงจันทร์หมุนผ่านกาลเวลา ชุมชนมนุษย์ถือกำเนิด"],
+      [70, "ระบบดาวก่อตัว", "ดาวฤกษ์หนึ่งดวงกับดาวเคราะห์แปดดวงก่อตัวจากจานมวลสารในแขนกาแล็กซี"],
+      [78, "ดาวเคราะห์มีชีวิต", "มหาสมุทรและทวีปของดาวเคราะห์ดวงที่สามเริ่มเสถียร"],
+      [82, "Atmosphere Genesis", "ชั้นบรรยากาศและกลุ่มเมฆค่อย ๆ ห่อหุ้มดาวก่อนกล้องเริ่มเข้าใกล้"],
+      [91, "โลกยุคพายุ", "ภูเขาไฟ ลาวา พายุ ฝน และฟ้าผ่ากำลังปรับสมดุลโลกยุคแรก"],
+      [96, "Life Genesis", "พืช ต้นไม้ ใบหญ้า และสิ่งมีชีวิตแรกเริ่มแพร่กระจาย"],
+      [98, "Age of Giants", "สัตว์ขนาดใหญ่และไดโนเสาร์ยุคแรกเดินทางผ่านผืนทวีป"],
+      [99, "รุ่งอรุณแห่งอารยธรรม", "หลังระบบนิเวศผ่านกาลเวลา ชุมชนมนุษย์ถือกำเนิด"],
     ],
   },
   {
@@ -138,6 +142,12 @@ const bigBangFlashOpacity = computed(() => {
   if (point < .241 || point > .292) return 0;
   return Math.min(1, Math.exp(-Math.pow((point - .246) * 56, 2)) * 1.55);
 });
+const cloudTransitionOpacity=computed(()=>{
+  if(scenarioId.value!=="genesis")return 0;
+  const p=progress.value/100;
+  if(p<.892||p>.942)return 0;
+  return p<.916?smooth(p,.892,.916):1-smooth(p,.916,.942);
+});
 const phase = computed(() => {
   const entries = scenario.value.phases;
   return [...entries].reverse().find(([threshold]) => progress.value >= threshold) ?? entries[0];
@@ -207,6 +217,7 @@ let star;
 let starLight;
 let singularityFlash;
 let auroraGroup;
+let primordialEnergyGroup;
 let galaxyGroup;
 let nebulaBackdrop;
 let solarSystem;
@@ -215,11 +226,18 @@ let surfaceWorld;
 let surfaceTerrain;
 let surfaceWater;
 let surfaceAtmosphere;
+let surfaceSky;
+let surfaceMilkyWay;
 let surfaceForest;
+let surfaceShrubs;
 let surfaceMountains;
 let surfaceSnowCaps;
 let surfaceCloudLayer;
 let surfaceCivilization;
+let surfaceRain;
+let surfaceLightningGroup;
+let surfaceVolcanoGroup;
+let surfaceDinosaurs;
 let blackHole;
 let blackHoleLens;
 let spacetimeGrid;
@@ -242,6 +260,7 @@ const civilization = [];
 const lifeForms = [];
 const stormClouds = [];
 const focusPosition = new THREE.Vector3();
+const sunPosition = new THREE.Vector3();
 const debrisMatrix = new THREE.Matrix4();
 const debrisQuaternion = new THREE.Quaternion();
 const debrisPosition = new THREE.Vector3();
@@ -485,6 +504,7 @@ function makeSphericalSurface() {
   const terrainFragment = `
     uniform float uFormation;
     uniform float uLife;
+    uniform vec3 uSunDirection;
     varying float vHeight;
     varying vec3 vNormalW;
     varying vec3 vPoint;
@@ -502,13 +522,14 @@ function makeSphericalSurface() {
       vec3 color=mix(sand,grass,beach);
       color=mix(color,rock,clamp(upland+slope*.9,0.0,1.0));
       color=mix(color,snow,max(alpine,polar*.78));
-      float sunlight=.3+max(0.0,dot(vNormalW,normalize(vec3(-.4,.7,.6))))*.85;
+      float daylight=max(0.0,dot(vNormalW,normalize(uSunDirection)));
+      float sunlight=.055+daylight*.98;
       gl_FragColor=vec4(color*sunlight,uFormation);
     }
   `;
   surfaceTerrain = new THREE.Mesh(
     new THREE.SphereGeometry(radius, 160, 104),
-    new THREE.ShaderMaterial({ transparent: true, uniforms: { uFormation: { value: 0 }, uLife: { value: 0 } }, vertexShader: terrainVertex, fragmentShader: terrainFragment }),
+    new THREE.ShaderMaterial({ transparent: true, uniforms: { uFormation: { value: 0 }, uLife: { value: 0 },uSunDirection:{value:new THREE.Vector3(1,1,1).normalize()} }, vertexShader: terrainVertex, fragmentShader: terrainFragment }),
   );
   root.add(surfaceTerrain);
 
@@ -524,15 +545,44 @@ function makeSphericalSurface() {
   root.add(surfaceWater);
 
   surfaceAtmosphere = new THREE.Mesh(
-    new THREE.SphereGeometry(radius + .34, 96, 64),
+    new THREE.SphereGeometry(radius + .68, 112, 72),
     new THREE.ShaderMaterial({
       transparent: true, side: THREE.DoubleSide, depthWrite: false,
       uniforms: { uDensity: { value: 0 } },
       vertexShader: `varying vec3 vN;varying vec3 vWorld;void main(){vN=normalize(normalMatrix*normal);vec4 w=modelMatrix*vec4(position,1.0);vWorld=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}`,
-      fragmentShader: `uniform float uDensity;varying vec3 vN;varying vec3 vWorld;void main(){vec3 viewDir=normalize(cameraPosition-vWorld);float horizon=pow(1.0-abs(dot(viewDir,vN)),2.0);vec3 sky=mix(vec3(.2,.55,.9),vec3(.72,.9,1.0),horizon);gl_FragColor=vec4(sky,(.035+horizon*.22)*uDensity);}`,
+      fragmentShader: `uniform float uDensity;varying vec3 vN;varying vec3 vWorld;void main(){vec3 viewDir=normalize(cameraPosition-vWorld);float horizon=pow(1.0-abs(dot(viewDir,vN)),2.7);vec3 sky=mix(vec3(.035,.18,.55),vec3(.38,.72,1.0),horizon);gl_FragColor=vec4(sky,(.008+horizon*.16)*uDensity);}`,
     }),
   );
   root.add(surfaceAtmosphere);
+
+  surfaceSky=new THREE.Mesh(
+    new THREE.SphereGeometry(32,64,40),
+    new THREE.ShaderMaterial({
+      side:THREE.BackSide,depthWrite:false,depthTest:false,
+      uniforms:{uUp:{value:new THREE.Vector3(0,1,0)},uSunDirection:{value:new THREE.Vector3(1,1,1)},uDaylight:{value:1},uStorm:{value:0}},
+      vertexShader:`varying vec3 vDir;void main(){vDir=normalize(position);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+      fragmentShader:`uniform vec3 uUp;uniform vec3 uSunDirection;uniform float uDaylight;uniform float uStorm;varying vec3 vDir;void main(){float altitude=dot(normalize(vDir),normalize(uUp));float horizon=1.0-smoothstep(-.16,.7,altitude);vec3 nightZenith=vec3(.001,.004,.018);vec3 nightHorizon=vec3(.008,.035,.09);vec3 dayZenith=vec3(.012,.34,.82);vec3 dayHorizon=vec3(.58,.88,1.0);vec3 night=mix(nightZenith,nightHorizon,pow(horizon,.8));vec3 day=mix(dayZenith,dayHorizon,pow(horizon,.64));float sunGlow=pow(max(0.0,dot(normalize(vDir),normalize(uSunDirection))),96.0);vec3 color=mix(night,day,smoothstep(.015,.36,uDaylight));color+=vec3(1.0,.68,.34)*sunGlow*uDaylight*.68;color=mix(color,vec3(.1,.15,.21),uStorm*.48);gl_FragColor=vec4(color,1.0);}`,
+    }),
+  );
+  surfaceSky.renderOrder=-100;
+  root.add(surfaceSky);
+
+  const milkyCount=22000;const milkyPositions=new Float32Array(milkyCount*3);const milkyColors=new Float32Array(milkyCount*3);const milkySizes=new Float32Array(milkyCount);
+  const milkyPalette=[new THREE.Color(0x91b8ff),new THREE.Color(0xd8e4ff),new THREE.Color(0xffe5c4),new THREE.Color(0xd798c9)];
+  for(let i=0;i<milkyCount;i++){const isCore=i<milkyCount*.27;const longitude=isCore?.42+(Math.random()-.5)*Math.pow(Math.random(),1.7)*1.55:Math.random()*Math.PI*2;const coreEnvelope=Math.exp(-Math.pow((longitude-.42)/.62,2));const widthWave=.5+.5*Math.sin(longitude*1.65+.7)+.24*Math.sin(longitude*4.3);const bandWidth=.022+Math.pow(Math.max(.05,widthWave),1.55)*.07+coreEnvelope*.13;const gaussian=(Math.random()+Math.random()+Math.random()+Math.random()-2)*.5;const warpedCenter=Math.sin(longitude*1.7)*.025+Math.sin(longitude*3.9+1.2)*.012;const latitude=warpedCenter+gaussian*bandWidth*(isCore?1.35:1);const r=238+Math.random()*5;milkyPositions.set([Math.cos(latitude)*Math.cos(longitude)*r,Math.sin(latitude)*r,Math.cos(latitude)*Math.sin(longitude)*r],i*3);const dustLane=Math.abs(latitude-warpedCenter)<bandWidth*.16?.46:1;const c=(isCore?new THREE.Color(0xffefd1):milkyPalette[i%milkyPalette.length]).clone().multiplyScalar((isCore?.72+Math.random()*.68:.34+Math.random()*.72)*dustLane);milkyColors.set([c.r,c.g,c.b],i*3);milkySizes[i]=isCore?.65+Math.random()*2.1:.2+Math.random()*.9;}
+  const milkyGeometry=new THREE.BufferGeometry();milkyGeometry.setAttribute("position",new THREE.BufferAttribute(milkyPositions,3));milkyGeometry.setAttribute("aColor",new THREE.BufferAttribute(milkyColors,3));milkyGeometry.setAttribute("aSize",new THREE.BufferAttribute(milkySizes,1));
+  surfaceMilkyWay=new THREE.Points(milkyGeometry,new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,uniforms:{uOpacity:{value:0}},vertexShader:`attribute vec3 aColor;attribute float aSize;varying vec3 vColor;void main(){vColor=aColor;vec4 mv=modelViewMatrix*vec4(position,1.0);gl_PointSize=min(4.2,(.65+aSize*1.55)*(240.0/max(1.0,-mv.z)));gl_Position=projectionMatrix*mv;}`,fragmentShader:`uniform float uOpacity;varying vec3 vColor;void main(){vec2 q=gl_PointCoord-.5;float r=length(q);if(r>.5)discard;float glow=exp(-r*7.0);gl_FragColor=vec4(vColor,glow*uOpacity);}`}));
+  surfaceMilkyWay.renderOrder=-90;root.add(surfaceMilkyWay);
+
+  surfaceMoon=new THREE.Mesh(
+    new THREE.SphereGeometry(.48,96,64),
+    new THREE.ShaderMaterial({
+      uniforms:{uSunDirection:{value:new THREE.Vector3(1,1,1)}},
+      vertexShader:`varying vec3 vN;varying vec3 vP;void main(){vN=normalize(mat3(modelMatrix)*normal);vP=normalize(position);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+      fragmentShader:`uniform vec3 uSunDirection;varying vec3 vN;varying vec3 vP;float lunar(vec3 p){float a=sin(p.x*43.0+p.y*17.0)*sin(p.z*51.0-p.y*29.0);float b=sin(p.x*91.0-p.z*73.0)*sin(p.y*67.0)*.35;return a+b;}void main(){float field=lunar(vP);float maria=smoothstep(.26,.68,field);float fine=sin(vP.x*173.0+vP.z*139.0)*.035;vec3 rock=mix(vec3(.21,.22,.22),vec3(.69,.68,.64),1.0-maria*.55)+fine;float lambert=max(0.0,dot(normalize(vN),normalize(uSunDirection)));float rim=pow(1.0-max(0.0,dot(normalize(vN),vec3(0.0,0.0,1.0))),3.0);vec3 color=rock*(.012+lambert*.98)+vec3(.08,.1,.13)*rim*.08;gl_FragColor=vec4(color,1.0);}`,
+    }),
+  );
+  root.add(surfaceMoon);
 
   function terrainHeightAt(n) {
     return Math.sin(n.x*3.7+n.z*1.3)*Math.sin(n.y*4.9-n.x*1.7)*.13 + Math.sin(n.x*9.2+n.y*7.4+n.z*5.3)*.055 + Math.sin(n.x*21-n.z*17)*Math.sin(n.y*16)*.022 - .018;
@@ -547,8 +597,8 @@ function makeSphericalSurface() {
   const position = new THREE.Vector3();
   const scale = new THREE.Vector3();
 
-  const mountainCount = 260;
-  const mountainGeometry=new THREE.CylinderGeometry(.035,.205,.44,9,5,false);
+  const mountainCount = 190;
+  const mountainGeometry=new THREE.CylinderGeometry(.025,.16,.34,10,5,false);
   const mountainVertices=mountainGeometry.attributes.position;
   for(let vertexIndex=0;vertexIndex<mountainVertices.count;vertexIndex++){
     const x=mountainVertices.getX(vertexIndex);const y=mountainVertices.getY(vertexIndex);const z=mountainVertices.getZ(vertexIndex);
@@ -562,63 +612,113 @@ function makeSphericalSurface() {
     const x=snowVertices.getX(vertexIndex);const y=snowVertices.getY(vertexIndex);const z=snowVertices.getZ(vertexIndex);const ridge=1+Math.sin(Math.atan2(z,x)*5+y*19)*.1;snowVertices.setXYZ(vertexIndex,x*ridge,y,z*ridge);
   }
   snowGeometry.computeVertexNormals();
-  surfaceMountains = new THREE.InstancedMesh(mountainGeometry,new THREE.MeshStandardMaterial({color:0x555a52,roughness:1,flatShading:true}),mountainCount);
-  surfaceSnowCaps = new THREE.InstancedMesh(snowGeometry,new THREE.MeshStandardMaterial({color:0xe5edf0,roughness:.92,flatShading:true}),mountainCount);
+  const mountainSnowFactors=new Float32Array(mountainCount);
+  mountainGeometry.setAttribute("aSnow",new THREE.InstancedBufferAttribute(mountainSnowFactors,1));
+  const mountainMaterial=new THREE.ShaderMaterial({
+    transparent:true,
+    uniforms:{uOpacity:{value:0},uSunDirection:{value:new THREE.Vector3(1,1,1).normalize()}},
+    vertexShader:`attribute float aSnow;varying float vHeight;varying float vSnow;varying vec3 vNormalW;void main(){vHeight=clamp(position.y/.34+.5,0.0,1.0);vSnow=aSnow;vec4 instancePosition=instanceMatrix*vec4(position,1.0);vNormalW=normalize(mat3(modelMatrix)*mat3(instanceMatrix)*normal);gl_Position=projectionMatrix*modelViewMatrix*instancePosition;}`,
+    fragmentShader:`uniform float uOpacity;uniform vec3 uSunDirection;varying float vHeight;varying float vSnow;varying vec3 vNormalW;void main(){float strata=sin(vHeight*58.0+vNormalW.x*9.0+vNormalW.z*13.0)*.5+.5;vec3 lower=mix(vec3(.24,.27,.23),vec3(.38,.40,.34),strata*.42);vec3 upper=vec3(.31,.33,.31);vec3 rock=mix(lower,upper,smoothstep(.42,.82,vHeight));float topFacing=smoothstep(.08,.58,dot(normalize(vNormalW),normalize(vec3(0.0,1.0,0.0))));float snowLine=smoothstep(.67,.88,vHeight)*vSnow;float snowMask=clamp(snowLine*(.72+topFacing*.28),0.0,1.0);vec3 snow=mix(vec3(.72,.79,.82),vec3(.96,.985,1.0),strata*.28+vHeight*.4);vec3 color=mix(rock,snow,snowMask);float daylight=max(0.0,dot(normalize(vNormalW),normalize(uSunDirection)));float lighting=.34+daylight*.78;gl_FragColor=vec4(color*lighting,uOpacity);}`
+  });
+  surfaceMountains = new THREE.InstancedMesh(mountainGeometry,mountainMaterial,mountainCount);
+  surfaceSnowCaps = new THREE.InstancedMesh(snowGeometry,new THREE.MeshBasicMaterial({color:0xf2f7f8,transparent:true,toneMapped:false}),mountainCount);
   for(let i=0;i<mountainCount;i++){
     const belt=i%3;const lon=(i/mountainCount)*Math.PI*8+(belt*.7);const lat=(belt-1)*.48+Math.sin(i*.73)*.11;
-    const n=spherePoint(lat,lon,1).normalize();const h=.22+Math.random()*.42;const baseR=radius+Math.max(.04,terrainHeightAt(n));
+    const n=spherePoint(lat,lon,1).normalize();const h=i<11?.25+Math.random()*.22:.065+Math.random()*.12;mountainSnowFactors[i]=i<11?1:0;const terrainH=terrainHeightAt(n);const baseR=terrainH<=.012?radius-h*1.05:radius+terrainH-Math.min(.035,h*.22);
     quaternion.setFromUnitVectors(up,n);yawQuaternion.setFromAxisAngle(up,Math.random()*Math.PI*2);quaternion.multiply(yawQuaternion);
-    position.copy(n).multiplyScalar(baseR+h*.47);scale.set(.82+Math.random()*.72,h/.44,.8+Math.random()*.8);matrix.compose(position,quaternion,scale);surfaceMountains.setMatrixAt(i,matrix);
-    position.copy(n).multiplyScalar(baseR+h*.77);scale.set(.72+Math.random()*.34,h/.44*.46,.72+Math.random()*.34);matrix.compose(position,quaternion,scale);surfaceSnowCaps.setMatrixAt(i,matrix);
+    position.copy(n).multiplyScalar(baseR+h*.32);scale.set(.7+Math.random()*.58,h/.34,.7+Math.random()*.62);matrix.compose(position,quaternion,scale);surfaceMountains.setMatrixAt(i,matrix);
+    position.copy(n).multiplyScalar(baseR+h*.7);scale.set(.64+Math.random()*.28,h/.34*.4,.64+Math.random()*.28);matrix.compose(position,quaternion,scale);surfaceSnowCaps.setMatrixAt(i,matrix);
   }
+  mountainGeometry.attributes.aSnow.needsUpdate=true;
+  surfaceSnowCaps.count=11;
   root.add(surfaceMountains,surfaceSnowCaps);
 
-  const treeCount=2200;
-  surfaceForest=new THREE.InstancedMesh(new THREE.ConeGeometry(.025,.16,7),new THREE.MeshStandardMaterial({color:0xffffff,roughness:1,flatShading:true,transparent:true,opacity:0}),treeCount);
-  const forestPalette=[new THREE.Color(0x155a2d),new THREE.Color(0x24753a),new THREE.Color(0x3b873d),new THREE.Color(0x1d6538)];
+  function makeCrossedPlantGeometry(width,height,planes=4){const vertices=[],uvs=[];for(let plane=0;plane<planes;plane++){const a=plane*Math.PI/planes;const dx=Math.cos(a)*width*.5,dz=Math.sin(a)*width*.5;vertices.push(-dx,0,-dz,dx,0,dz,dx,height,dz,-dx,0,-dz,dx,height,dz,-dx,height,-dz);uvs.push(0,0,1,0,1,1,0,0,1,1,0,1);}const geometry=new THREE.BufferGeometry();geometry.setAttribute("position",new THREE.Float32BufferAttribute(vertices,3));geometry.setAttribute("uv",new THREE.Float32BufferAttribute(uvs,2));geometry.computeVertexNormals();return geometry;}
+  function makePlantTexture(isShrub=false){const canvas=document.createElement("canvas");canvas.width=128;canvas.height=128;const ctx=canvas.getContext("2d");ctx.clearRect(0,0,128,128);if(!isShrub){ctx.fillStyle="#855b32";ctx.fillRect(58,62,12,66);}const greens=isShrub?["#2e8f45","#4fb455","#78c75f"]:["#36a852","#58c45f","#7bd36a","#2d9149"];for(let i=0;i<(isShrub?18:28);i++){ctx.beginPath();ctx.fillStyle=greens[i%greens.length];const x=64+(Math.random()-.5)*(isShrub?88:78);const y=(isShrub?66:18)+Math.random()*(isShrub?50:76);const r=(isShrub?13:11)+Math.random()*12;ctx.ellipse(x,y,r,r*(.65+Math.random()*.45),Math.random()*Math.PI,0,Math.PI*2);ctx.fill();}const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;texture.premultiplyAlpha=true;texture.minFilter=THREE.LinearMipmapLinearFilter;texture.magFilter=THREE.LinearFilter;texture.needsUpdate=true;return texture;}
+  const treeCount=2500;
+  const treeTexture=makePlantTexture(false);
+  surfaceForest=new THREE.InstancedMesh(makeCrossedPlantGeometry(.035,.072,4),new THREE.MeshBasicMaterial({map:treeTexture,color:0xffffff,transparent:true,alphaTest:.35,depthWrite:true,side:THREE.DoubleSide,vertexColors:false,toneMapped:false,opacity:0}),treeCount);
   let placed=0,attempts=0;
-  while(placed<treeCount&&attempts<treeCount*8){attempts++;const lat=(Math.random()-.5)*2.25;const lon=Math.random()*Math.PI*2;const n=spherePoint(lat,lon,1).normalize();const h=terrainHeightAt(n);if(h<.012||h>.145||Math.abs(lat)>1.05)continue;quaternion.setFromUnitVectors(up,n);position.copy(n).multiplyScalar(radius+h+.075);const s=.65+Math.random()*.95;scale.setScalar(s);matrix.compose(position,quaternion,scale);surfaceForest.setMatrixAt(placed,matrix);surfaceForest.setColorAt(placed,forestPalette[placed%forestPalette.length]);placed++;}
+  while(placed<treeCount&&attempts<treeCount*8){attempts++;const lat=(Math.random()-.5)*2.25;const lon=Math.random()*Math.PI*2;const n=spherePoint(lat,lon,1).normalize();const h=terrainHeightAt(n);if(h<.018||h>.145||Math.abs(lat)>1.05)continue;quaternion.setFromUnitVectors(up,n);position.copy(n).multiplyScalar(radius+h+.002);const s=.55+Math.random()*.7;scale.setScalar(s);matrix.compose(position,quaternion,scale);surfaceForest.setMatrixAt(placed,matrix);placed++;}
   surfaceForest.count=placed;
-  if(surfaceForest.instanceColor)surfaceForest.instanceColor.needsUpdate=true;
   root.add(surfaceForest);
 
-  surfaceCloudLayer=new THREE.Group();
+  const shrubTexture=makePlantTexture(true);const shrubCount=1800;surfaceShrubs=new THREE.InstancedMesh(makeCrossedPlantGeometry(.035,.026,4),new THREE.MeshBasicMaterial({map:shrubTexture,color:0xffffff,transparent:true,alphaTest:.35,depthWrite:true,side:THREE.DoubleSide,vertexColors:false,toneMapped:false,opacity:0}),shrubCount);let shrubPlaced=0,shrubAttempts=0;
+  while(shrubPlaced<shrubCount&&shrubAttempts<shrubCount*8){shrubAttempts++;const lat=(Math.random()-.5)*2.2;const lon=Math.random()*Math.PI*2;const n=spherePoint(lat,lon,1).normalize();const h=terrainHeightAt(n);if(h<.014||h>.15)continue;quaternion.setFromUnitVectors(up,n);yawQuaternion.setFromAxisAngle(up,Math.random()*Math.PI*2);quaternion.multiply(yawQuaternion);position.copy(n).multiplyScalar(radius+h+.001);scale.setScalar(.55+Math.random()*.65);matrix.compose(position,quaternion,scale);surfaceShrubs.setMatrixAt(shrubPlaced,matrix);shrubPlaced++;}surfaceShrubs.count=shrubPlaced;root.add(surfaceShrubs);
+
+  const cloudCount=1200;const cloudPositions=new Float32Array(cloudCount*3);const cloudNormals=new Float32Array(cloudCount*3);const cloudSizes=new Float32Array(cloudCount);
+  const cloudClusters=Array.from({length:72},()=>({lat:(Math.random()-.5)*1.85,lon:Math.random()*Math.PI*2,spread:.022+Math.random()*.082}));
+  for(let i=0;i<cloudCount;i++){const cluster=cloudClusters[i%cloudClusters.length];const lat=cluster.lat+(Math.random()-.5)*cluster.spread;const lon=cluster.lon+(Math.random()-.5)*cluster.spread*2.5;const n=spherePoint(lat,lon,1).normalize();const pos=n.clone().multiplyScalar(radius+.34+Math.random()*.09);cloudPositions.set([pos.x,pos.y,pos.z],i*3);cloudNormals.set([n.x,n.y,n.z],i*3);cloudSizes[i]=46+Math.random()*88;}
+  const cloudGeometry=new THREE.BufferGeometry();cloudGeometry.setAttribute("position",new THREE.BufferAttribute(cloudPositions,3));cloudGeometry.setAttribute("aNormal",new THREE.BufferAttribute(cloudNormals,3));cloudGeometry.setAttribute("aSize",new THREE.BufferAttribute(cloudSizes,1));
+  surfaceCloudLayer=new THREE.Points(cloudGeometry,new THREE.ShaderMaterial({
+    transparent:true,depthWrite:false,
+    uniforms:{uSunDirection:{value:new THREE.Vector3(1,1,1)},uOpacity:{value:0}},
+    vertexShader:`attribute float aSize;attribute vec3 aNormal;varying vec3 vNormal;void main(){vNormal=normalize(normalMatrix*aNormal);vec4 mv=modelViewMatrix*vec4(position,1.0);gl_PointSize=min(42.0,aSize/max(1.0,-mv.z));gl_Position=projectionMatrix*mv;}`,
+    fragmentShader:`uniform vec3 uSunDirection;uniform float uOpacity;varying vec3 vNormal;void main(){vec2 q=gl_PointCoord-.5;float r=length(q);float n1=sin(q.x*21.0+sin(q.y*13.0))*sin(q.y*17.0-q.x*7.0);float n2=sin(q.x*49.0-q.y*37.0)*.45+sin((q.x+q.y)*83.0)*.18;float edge=r+n1*.045+n2*.018;float body=smoothstep(.53,.18,edge);float vapor=smoothstep(.56,.34,edge)*(.72+n2*.18);float alpha=max(body,vapor*.72);float light=.14+max(0.0,dot(vNormal,normalize(uSunDirection)))*.86;vec3 shadow=vec3(.19,.25,.33);vec3 lit=vec3(1.0,.985,.95);vec3 color=mix(shadow,lit,light);color+=n1*.035;gl_FragColor=vec4(color,alpha*uOpacity);}`,
+  }));
   surfaceCloudLayer.visible=false;
-  const streakGeometry=new THREE.CapsuleGeometry(.045,.24,3,8);streakGeometry.rotateZ(Math.PI/2);
-  const cloudSpecs=[
-    {count:105,geometry:new THREE.IcosahedronGeometry(.105,1),color:0xf4f7f8,shape:"puff"},
-    {count:72,geometry:streakGeometry,color:0xe7edf1,shape:"streak"},
-    {count:48,geometry:new THREE.DodecahedronGeometry(.1,0),color:0xdce6eb,shape:"broken"},
-  ];
-  const cloudClusters=Array.from({length:38},(_,clusterIndex)=>({lat:(Math.random()-.5)*1.85,lon:Math.random()*Math.PI*2,spread:.025+Math.random()*.075,phase:clusterIndex*.73}));
-  cloudSpecs.forEach((spec,specIndex)=>{
-    const cloudMesh=new THREE.InstancedMesh(spec.geometry,new THREE.MeshStandardMaterial({color:spec.color,roughness:.96,flatShading:spec.shape!=="streak"}),spec.count);
-    for(let i=0;i<spec.count;i++){
-      const cluster=cloudClusters[(i*3+specIndex*7)%cloudClusters.length];const lat=cluster.lat+(Math.random()-.5)*cluster.spread;const lon=cluster.lon+(Math.random()-.5)*cluster.spread*1.8;const n=spherePoint(lat,lon,1).normalize();
-      position.copy(n).multiplyScalar(radius+.31+Math.random()*.11);quaternion.setFromUnitVectors(up,n);yawQuaternion.setFromAxisAngle(up,Math.random()*Math.PI*2);quaternion.multiply(yawQuaternion);
-      if(spec.shape==="puff")scale.set(.65+Math.random()*1.25,.35+Math.random()*.45,.7+Math.random()*1.4);
-      else if(spec.shape==="streak")scale.set(.9+Math.random()*2.2,.45+Math.random()*.5,.45+Math.random()*.8);
-      else scale.set(.55+Math.random()*1.15,.28+Math.random()*.55,.55+Math.random()*1.2);
-      matrix.compose(position,quaternion,scale);cloudMesh.setMatrixAt(i,matrix);
-    }
-    cloudMesh.userData.phase=specIndex*1.7;
-    surfaceCloudLayer.add(cloudMesh);
-  });
   root.add(surfaceCloudLayer);
+
+  // Early-world weather is wrapped around the spherical surface, so the storm
+  // remains visible from every latitude instead of behaving like a flat overlay.
+  const rainPositions=new Float32Array(3000*6);
+  for(let i=0;i<3000;i++){
+    const cluster=cloudClusters[(i*7)%cloudClusters.length];const lat=cluster.lat+(Math.random()-.5)*cluster.spread*.92;const lon=cluster.lon+(Math.random()-.5)*cluster.spread*2.15;const n=spherePoint(lat,lon,1).normalize();
+    const tangent=new THREE.Vector3(-n.z,0,n.x).normalize().multiplyScalar(.025+Math.random()*.035);
+    const start=n.clone().multiplyScalar(radius+.27+Math.random()*.1);const end=start.clone().addScaledVector(n,-(.17+Math.random()*.22)).add(tangent);
+    rainPositions.set([start.x,start.y,start.z,end.x,end.y,end.z],i*6);
+  }
+  const rainGeometry=new THREE.BufferGeometry();rainGeometry.setAttribute("position",new THREE.BufferAttribute(rainPositions,3));
+  surfaceRain=new THREE.LineSegments(rainGeometry,new THREE.LineBasicMaterial({color:0x9fc7db,transparent:true,opacity:0,depthWrite:false}));
+  root.add(surfaceRain);
+
+  surfaceLightningGroup=new THREE.Group();
+  for(let i=0;i<28;i++){
+    const stormCell=new THREE.Group();const mainPoints=[];
+    for(let j=0;j<13;j++)mainPoints.push(new THREE.Vector3((Math.random()-.5)*.11,-j*.052,(Math.random()-.5)*.11));
+    const lightningMaterial=()=>new THREE.LineBasicMaterial({color:Math.random()>.35?0xf1f8ff:0xaedcff,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false});
+    const mainBolt=new THREE.Line(new THREE.BufferGeometry().setFromPoints(mainPoints),lightningMaterial());mainBolt.userData.strength=1;stormCell.add(mainBolt);
+    const branches=3+Math.floor(Math.random()*4);
+    for(let branch=0;branch<branches;branch++){const startIndex=3+Math.floor(Math.random()*7);const start=mainPoints[startIndex].clone();const branchPoints=[start];const direction=new THREE.Vector3((Math.random()-.5)*.34,-(.14+Math.random()*.28),(Math.random()-.5)*.34);for(let j=1;j<7;j++){const t=j/6;branchPoints.push(start.clone().addScaledVector(direction,t).add(new THREE.Vector3((Math.random()-.5)*.055,(Math.random()-.5)*.025,(Math.random()-.5)*.055)));}const branchBolt=new THREE.Line(new THREE.BufferGeometry().setFromPoints(branchPoints),lightningMaterial());branchBolt.userData.strength=.38+Math.random()*.34;stormCell.add(branchBolt);}
+    const lat=(Math.random()-.5)*2.1;const lon=Math.random()*Math.PI*2;const n=spherePoint(lat,lon,1).normalize();stormCell.position.copy(n).multiplyScalar(radius+.68);stormCell.quaternion.setFromUnitVectors(up,n);stormCell.userData.phase=Math.random()*40;surfaceLightningGroup.add(stormCell);
+  }
+  root.add(surfaceLightningGroup);
+
+  surfaceVolcanoGroup=new THREE.Group();
+  const volcanoRock=new THREE.MeshBasicMaterial({color:0x66564d,toneMapped:false});
+  let volcanoPlaced=0,volcanoAttempts=0;
+  while(volcanoPlaced<28&&volcanoAttempts<420){
+    volcanoAttempts++;
+    const lat=(Math.random()-.5)*1.7;const lon=volcanoAttempts*.91+Math.random()*.45;const n=spherePoint(lat,lon,1).normalize();const terrainH=terrainHeightAt(n);
+    if(terrainH<.022||terrainH>.145)continue;
+    const volcano=new THREE.Group();const height=.075+Math.random()*.085;const baseRadius=.18+Math.random()*.1;const craterRadius=.045+Math.random()*.018;
+    const cone=new THREE.Mesh(new THREE.CylinderGeometry(craterRadius,baseRadius,height,18,5,false),volcanoRock);cone.position.y=height*.42;volcano.add(cone);
+    const crater=new THREE.Mesh(new THREE.TorusGeometry(craterRadius*.92,.009,8,28),new THREE.MeshBasicMaterial({color:0xff4b16,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false,toneMapped:false}));crater.rotation.x=Math.PI/2;crater.position.y=height*.92;crater.userData.isLava=true;volcano.add(crater);
+    for(let stream=0;stream<2;stream++){const a=stream*Math.PI+Math.random();const curve=new THREE.CatmullRomCurve3([new THREE.Vector3(Math.cos(a)*craterRadius*.7,height*.9,Math.sin(a)*craterRadius*.7),new THREE.Vector3(Math.cos(a)*baseRadius*.48,height*.42,Math.sin(a)*baseRadius*.48),new THREE.Vector3(Math.cos(a)*baseRadius*.92,-.006,Math.sin(a)*baseRadius*.92)]);const lava=new THREE.Mesh(new THREE.TubeGeometry(curve,18,.008,5,false),new THREE.MeshBasicMaterial({color:0xff3a0a,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false,toneMapped:false}));lava.userData.isLava=true;volcano.add(lava);}
+    volcano.position.copy(n).multiplyScalar(radius+terrainH-Math.min(.018,height*.14));volcano.quaternion.setFromUnitVectors(up,n);volcano.rotateY(Math.random()*Math.PI*2);volcano.userData.phase=Math.random()*12;surfaceVolcanoGroup.add(volcano);volcanoPlaced++;
+  }
+  root.add(surfaceVolcanoGroup);
+
+  function makeDinosaur(index){
+    const dino=new THREE.Group();const skin=new THREE.MeshStandardMaterial({color:[0x546f35,0x776037,0x4d7554][index%3],roughness:.95,flatShading:true});
+    const torso=new THREE.Mesh(new THREE.SphereGeometry(.075,10,7),skin);torso.scale.set(1.75,.75,.72);torso.position.y=.09;dino.add(torso);
+    const neck=new THREE.Mesh(new THREE.CylinderGeometry(.018,.035,.15,7),skin);neck.rotation.z=-.55;neck.position.set(.105,.16,0);dino.add(neck);
+    const head=new THREE.Mesh(new THREE.SphereGeometry(.035,8,6),skin);head.position.set(.16,.225,0);dino.add(head);
+    const tail=new THREE.Mesh(new THREE.ConeGeometry(.038,.27,7),skin);tail.rotation.z=-Math.PI/2;tail.position.set(-.2,.1,0);dino.add(tail);
+    for(const x of [-.065,.07])for(const z of [-.035,.035]){const leg=new THREE.Mesh(new THREE.CylinderGeometry(.012,.016,.09,6),skin);leg.position.set(x,.035,z);dino.add(leg);}return dino;
+  }
+  surfaceDinosaurs=new THREE.Group();
+  let dinosaurPlaced=0,dinosaurAttempts=0;
+  while(dinosaurPlaced<42&&dinosaurAttempts<900){dinosaurAttempts++;const lat=(Math.random()-.5)*1.75;const lon=Math.random()*Math.PI*2;const n=spherePoint(lat,lon,1).normalize();const h=terrainHeightAt(n);if(h<.025||h>.12)continue;const dino=makeDinosaur(dinosaurPlaced);dino.position.copy(n).multiplyScalar(radius+h+.02);dino.quaternion.setFromUnitVectors(up,n);dino.rotateY(Math.random()*Math.PI*2);dino.scale.setScalar(0);dino.userData.baseScale=.24+Math.random()*.24;dino.userData.phase=Math.random()*9;surfaceDinosaurs.add(dino);dinosaurPlaced++;}
+  root.add(surfaceDinosaurs);
 
   const villageCount=180;
   surfaceCivilization=new THREE.InstancedMesh(new THREE.BoxGeometry(.045,.065,.045),new THREE.MeshStandardMaterial({color:0xb28a58,roughness:.9,transparent:true,opacity:0}),villageCount);
-  for(let i=0;i<villageCount;i++){const region=Math.floor(i/30);const lat=-.55+region*.2+Math.sin(i)*.035;const lon=.3+region*.82+(i%30)*.012;const n=spherePoint(lat,lon,1).normalize();const h=Math.max(.02,terrainHeightAt(n));position.copy(n).multiplyScalar(radius+h+.035);quaternion.setFromUnitVectors(up,n);scale.setScalar(.7+Math.random()*.9);matrix.compose(position,quaternion,scale);surfaceCivilization.setMatrixAt(i,matrix);}
+  let villagePlaced=0,villageAttempts=0;while(villagePlaced<villageCount&&villageAttempts<4000){villageAttempts++;const region=Math.floor(villagePlaced/30);const lat=-.55+region*.2+Math.sin(villageAttempts)*.045;const lon=.3+region*.82+(villageAttempts%47)*.017;const n=spherePoint(lat,lon,1).normalize();const h=terrainHeightAt(n);if(h<.02||h>.135)continue;position.copy(n).multiplyScalar(radius+h+.004);quaternion.setFromUnitVectors(up,n);scale.setScalar(.55+Math.random()*.72);matrix.compose(position,quaternion,scale);surfaceCivilization.setMatrixAt(villagePlaced,matrix);villagePlaced++;}surfaceCivilization.count=villagePlaced;
   root.add(surfaceCivilization);
-
-  const riverMaterial=new THREE.MeshStandardMaterial({color:0x17647a,roughness:.2,metalness:.03,transparent:true,opacity:.9});
-  for(let riverIndex=0;riverIndex<11;riverIndex++){
-    const points=[];const baseLon=riverIndex*.57;for(let j=0;j<18;j++){const t=j/17;const lat=.72-t*.62+Math.sin(t*8+riverIndex)*.035;const lon=baseLon+t*.22+Math.sin(t*10+riverIndex*.8)*.025;const n=spherePoint(lat,lon,1).normalize();points.push(n.multiplyScalar(radius+.035+Math.max(0,terrainHeightAt(n))*.5));}const curve=new THREE.CatmullRomCurve3(points);root.add(new THREE.Mesh(new THREE.TubeGeometry(curve,90,.012,6,false),riverMaterial));
-  }
 
   root.userData.radius=radius;
   root.userData.terrainHeightAt=terrainHeightAt;
-  root.userData.riverMaterial=riverMaterial;
   return root;
 }
 
@@ -627,6 +727,7 @@ function makeSolarSystem() {
   const sun = new THREE.Mesh(new THREE.IcosahedronGeometry(.38, 3), new THREE.MeshBasicMaterial({ color: 0xffc75f }));
   sun.userData.isSun = true;
   root.add(sun);
+  root.userData.sun=sun;
   const planetData = [
     ["Mercury", .66, .045, 0x8e8278], ["Venus", .9, .075, 0xc99851],
     ["Living World", 1.2, .082, 0x377fc5], ["Mars", 1.48, .06, 0xb85b3d],
@@ -637,9 +738,19 @@ function makeSolarSystem() {
   planetData.forEach(([name, radius, size, color], index) => {
     const orbit = new THREE.Mesh(new THREE.RingGeometry(radius - .006, radius + .006, 96), new THREE.MeshBasicMaterial({ color: 0x527083, transparent: true, opacity: .32, side: THREE.DoubleSide }));
     orbit.rotation.x = Math.PI / 2;
+    orbit.userData.isOrbit=true;
     root.add(orbit);
     const body = new THREE.Group();
-    const planet = new THREE.Mesh(new THREE.IcosahedronGeometry(size, 2), new THREE.MeshStandardMaterial({ color, flatShading: true, roughness: .85 }));
+    let planet;
+    if(index===2){
+      planet=new THREE.Mesh(new THREE.SphereGeometry(size,96,64),new THREE.ShaderMaterial({
+        uniforms:{uTime:{value:0},uMaturity:{value:0}},
+        vertexShader:`varying vec3 vN;varying vec3 vP;void main(){vN=normalize(normalMatrix*normal);vP=normalize(position);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+        fragmentShader:`uniform float uTime;uniform float uMaturity;varying vec3 vN;varying vec3 vP;void main(){float macro=sin(vP.x*3.7+vP.z*1.4)*sin(vP.y*4.9-vP.x*1.8);float detail=sin(vP.x*11.3+vP.y*8.1+vP.z*5.7)*.34+sin(vP.x*23.0-vP.z*19.0)*sin(vP.y*17.0)*.12;float field=macro+detail;float land=smoothstep(-.05,.16,field);float mountain=smoothstep(.32,.82,field);float polar=smoothstep(.72,.94,abs(vP.y));vec3 ocean=mix(vec3(.003,.035,.18),vec3(.015,.28,.52),max(0.0,dot(vN,normalize(vec3(-.6,.45,.7))))*.55+.2);vec3 ground=mix(vec3(.16,.34,.12),vec3(.38,.29,.17),mountain);ground=mix(ground,vec3(.82,.9,.92),max(polar,mountain*.7));vec3 color=mix(ocean,ground,land*uMaturity);float light=.18+max(0.0,dot(vN,normalize(vec3(-.65,.4,.65))))*.92;gl_FragColor=vec4(color*light,1.0);}`,
+      }));
+    }else{
+      planet=new THREE.Mesh(new THREE.SphereGeometry(size,40,28),new THREE.MeshStandardMaterial({color,roughness:.86}));
+    }
     body.add(planet);
     body.userData = { name, radius, orbitalSpeed: .38 / Math.sqrt(radius), phase: index * 1.51, planet };
     if (index === 2) {
@@ -649,6 +760,11 @@ function makeSolarSystem() {
       moonPivot.add(moon);
       body.add(moonPivot);
       body.userData.moonPivot = moonPivot;
+      const atmosphereShell=new THREE.Mesh(new THREE.SphereGeometry(size*1.09,72,48),new THREE.ShaderMaterial({transparent:true,side:THREE.BackSide,depthWrite:false,blending:THREE.AdditiveBlending,uniforms:{uDensity:{value:0}},vertexShader:`varying vec3 vN;void main(){vN=normalize(normalMatrix*normal);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,fragmentShader:`uniform float uDensity;varying vec3 vN;void main(){float rim=pow(1.0-max(0.0,dot(vN,vec3(0.0,0.0,1.0))),2.5);gl_FragColor=vec4(vec3(.08,.42,1.0)*(1.0+rim),rim*uDensity*.72);}`}));
+      const cloudShell=new THREE.Mesh(new THREE.SphereGeometry(size*1.025,80,52),new THREE.ShaderMaterial({transparent:true,depthWrite:false,uniforms:{uTime:{value:0},uDensity:{value:0}},vertexShader:`varying vec3 vP;varying vec3 vN;void main(){vP=normalize(position);vN=normalize(normalMatrix*normal);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,fragmentShader:`uniform float uTime;uniform float uDensity;varying vec3 vP;varying vec3 vN;void main(){float cloud=sin(vP.x*19.0+uTime*.03)*sin(vP.y*23.0-uTime*.02)*sin(vP.z*17.0+uTime*.015);cloud+=sin(vP.x*41.0-vP.z*37.0)*.34;float mask=smoothstep(.38,.72,cloud);float light=.45+max(0.0,dot(vN,normalize(vec3(-.6,.45,.7))))*.55;gl_FragColor=vec4(vec3(.92,.96,1.0)*light,mask*uDensity*.82);}`}));
+      body.add(atmosphereShell,cloudShell);
+      body.userData.atmosphereShell=atmosphereShell;
+      body.userData.cloudShell=cloudShell;
       root.userData.livingPlanet = body;
     }
     if (index === 5) {
@@ -709,28 +825,29 @@ function makeSolarSystem() {
 
 function makeGalaxy() {
   const root = new THREE.Group();
-  const count = 76000;
+  const count = 132000;
   const positions = new Float32Array(count * 3);
   const colors = new Float32Array(count * 3);
   const core = new THREE.Color(0xffe6bd);
   const armColors = [new THREE.Color(0x72bfff), new THREE.Color(0xc38cff), new THREE.Color(0x68efdc), new THREE.Color(0xffffff)];
   for (let i = 0; i < count; i++) {
-    const isBulge = i < count * .18;
+    const isBulge = i < count * .28;
     const arm = i % 4;
     let radius;
     let angle;
     if (isBulge) {
-      radius = Math.pow(Math.random(), 2.15) * 2.65;
+      radius = Math.pow(Math.random(), 2.35) * 3.15;
       angle = Math.random() * Math.PI * 2;
     } else {
-      radius = .25 + Math.pow(Math.random(), .68) * 9.5;
-      const interArm = Math.random() < .16 ? (Math.random() - .5) * 1.25 : 0;
-      const scatter = (Math.random() - .5) * (.34 + radius * .105) + interArm;
-      angle = arm * Math.PI / 2 + radius * .69 + scatter;
+      radius = .18 + Math.pow(Math.random(), .72) * 9.7;
+      const interArm = Math.random() < .24 ? (Math.random() - .5) * 1.4 : 0;
+      const scatter = (Math.random() - .5) * (.48 + radius * .12) + interArm;
+      angle = arm * Math.PI / 2 + radius * .54 + scatter;
     }
-    positions[i * 3] = Math.cos(angle) * radius + (Math.random() - .5) * .14;
-    positions[i * 3 + 1] = Math.sin(angle) * radius + (Math.random() - .5) * .14;
-    positions[i * 3 + 2] = (Math.random() - .5) * (isBulge ? .95 * (1-radius/3.2) : .28 + radius * .065);
+    const barStretch=isBulge?1.0+Math.max(0,1-radius/3.2)*.72:1;
+    positions[i * 3] = Math.cos(angle) * radius*barStretch + (Math.random() - .5) * .18;
+    positions[i * 3 + 1] = (Math.sin(angle) * radius + (Math.random() - .5) * .18)*.82;
+    positions[i * 3 + 2] = (Math.random() - .5) * (isBulge ? 1.25 * Math.max(.18,1-radius/3.6) : .34 + radius * .072);
     const color = core.clone().lerp(armColors[arm], isBulge ? .12 : Math.min(1, radius / 5.2));
     const brightness = .48 + Math.random() * .52;
     colors.set([color.r * brightness, color.g * brightness, color.b * brightness], i * 3);
@@ -738,7 +855,7 @@ function makeGalaxy() {
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
   geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-  const disk = new THREE.Points(geometry, new THREE.PointsMaterial({ size: .023, vertexColors: true, transparent: true, opacity: .94, blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true }));
+  const disk = new THREE.Points(geometry, new THREE.PointsMaterial({ size: .018, vertexColors: true, transparent: true, opacity: .96, blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true }));
   root.add(disk);
   root.rotation.x = .78;
   root.userData.armTarget = new THREE.Vector3(3.4, 1.1, .1);
@@ -1246,6 +1363,22 @@ function makeBlackHole() {
   return root;
 }
 
+function makePrimordialEnergy() {
+  const root=new THREE.Group();
+  const palettes=[[0xff5a28,0xffc35a],[0x38a8ff,0x86e8ff],[0x9de8ff,0xdffaff],[0xb17945,0xf0c878],[0xa34cff,0xff63c8]];
+  root.userData.clouds=[];root.userData.bolts=[];
+  palettes.forEach((pair,layer)=>{
+    const count=760;const positions=new Float32Array(count*3);const sizes=new Float32Array(count);const phases=new Float32Array(count);const colors=new Float32Array(count*3);const ca=new THREE.Color(pair[0]),cb=new THREE.Color(pair[1]);
+    const branch=layer%3;const angle=branch*Math.PI*2/3+.35;const direction=new THREE.Vector3(Math.cos(angle),Math.sin(angle),(branch-1)*.28).normalize();const side=new THREE.Vector3(-direction.y,direction.x,.1).normalize();
+    for(let i=0;i<count;i++){const t=Math.pow(Math.random(),.72);const curl=Math.sin(t*13+layer)*(.08+t*.6);const spread=(Math.random()-.5)*(.12+t*.82);const p=direction.clone().multiplyScalar(.15+t*5.4).addScaledVector(side,curl+spread);p.z+=(Math.random()-.5)*(.15+t*.7);positions.set([p.x,p.y,p.z],i*3);sizes[i]=5+Math.random()*18;phases[i]=Math.random()*6.283;const c=ca.clone().lerp(cb,Math.random());colors.set([c.r,c.g,c.b],i*3);}
+    const geometry=new THREE.BufferGeometry();geometry.setAttribute("position",new THREE.BufferAttribute(positions,3));geometry.setAttribute("aSize",new THREE.BufferAttribute(sizes,1));geometry.setAttribute("aPhase",new THREE.BufferAttribute(phases,1));geometry.setAttribute("aColor",new THREE.BufferAttribute(colors,3));
+    const material=new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,uniforms:{uTime:{value:0},uOpacity:{value:0},uExpansion:{value:0}},vertexShader:`attribute float aSize;attribute float aPhase;attribute vec3 aColor;uniform float uTime;uniform float uExpansion;varying vec3 vColor;varying float vPhase;void main(){vColor=aColor;vPhase=aPhase;vec3 p=position*(.06+uExpansion);p+=normalize(position)*sin(uTime*1.8+aPhase)*.035*uExpansion;vec4 mv=modelViewMatrix*vec4(p,1.0);gl_PointSize=min(28.0,aSize*(280.0/max(1.0,-mv.z)));gl_Position=projectionMatrix*mv;}`,fragmentShader:`uniform float uTime;uniform float uOpacity;varying vec3 vColor;varying float vPhase;void main(){vec2 q=gl_PointCoord-.5;float r=length(q);if(r>.5)discard;float mist=smoothstep(.5,.08,r)*(.58+.42*sin(uTime*1.4+vPhase));gl_FragColor=vec4(vColor,mist*uOpacity*.42);}`});
+    const cloud=new THREE.Points(geometry,material);cloud.userData.layer=layer;root.userData.clouds.push(cloud);root.add(cloud);
+  });
+  for(let i=0;i<14;i++){const branch=i%3;const angle=branch*Math.PI*2/3+.35;const points=[];for(let j=0;j<10;j++){const t=j/9;points.push(new THREE.Vector3(Math.cos(angle)*t*4.8+Math.sin(t*17+i)*.16*t,Math.sin(angle)*t*4.8+Math.sin(t*11+i*.7)*.13*t,(branch-1)*t+Math.sin(t*19+i)*.12));}const bolt=new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),new THREE.LineBasicMaterial({color:i%2?0xaeeaff:0xffd69a,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false}));bolt.userData.phase=Math.random()*8;root.userData.bolts.push(bolt);root.add(bolt);}
+  root.visible=false;return root;
+}
+
 function createScene() {
   scene = new THREE.Scene();
   scene.fog = new THREE.FogExp2(0x02060d, 0.028);
@@ -1287,6 +1420,9 @@ function createScene() {
   const starGeometry = new THREE.BufferGeometry();
   const starPositions = new Float32Array(15000 * 3);
   const starSizes = new Float32Array(15000);
+  const starColors = new Float32Array(15000 * 3);
+  const starPhases = new Float32Array(15000);
+  const stellarPalette=[new THREE.Color(0x9bbcff),new THREE.Color(0xcad8ff),new THREE.Color(0xffffff),new THREE.Color(0xfff0c7),new THREE.Color(0xffc28b),new THREE.Color(0xff8b72)];
   for (let i = 0; i < 15000; i++) {
     const radius = 11 + Math.random() * 125;
     const theta = Math.random() * Math.PI * 2;
@@ -1295,10 +1431,13 @@ function createScene() {
     starPositions[i * 3 + 1] = radius * Math.cos(phi);
     starPositions[i * 3 + 2] = radius * Math.sin(phi) * Math.sin(theta);
     starSizes[i] = .6 + Math.random() * 1.5;
+    const stellarColor=stellarPalette[Math.floor(Math.pow(Math.random(),1.7)*stellarPalette.length)].clone().multiplyScalar(.72+Math.random()*.38);
+    starColors.set([stellarColor.r,stellarColor.g,stellarColor.b],i*3);starPhases[i]=Math.random()*Math.PI*2;
   }
   starGeometry.setAttribute("position", new THREE.BufferAttribute(starPositions, 3));
   starGeometry.setAttribute("aSize", new THREE.BufferAttribute(starSizes, 1));
-  const starMaterial = new THREE.PointsMaterial({ color: 0xa9d9ff, size: .035, transparent: true, opacity: .72, depthWrite: false });
+  starGeometry.setAttribute("aColor",new THREE.BufferAttribute(starColors,3));starGeometry.setAttribute("aPhase",new THREE.BufferAttribute(starPhases,1));
+  const starMaterial = new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,uniforms:{uTime:{value:0},uOpacity:{value:0}},vertexShader:`attribute float aSize;attribute float aPhase;attribute vec3 aColor;varying vec3 vColor;varying float vPhase;varying float vLarge;void main(){vColor=aColor;vPhase=aPhase;vLarge=step(1.82,aSize);vec4 mv=modelViewMatrix*vec4(position,1.0);gl_PointSize=min(8.0,(1.1+aSize*1.45)*(260.0/max(1.0,-mv.z)));gl_Position=projectionMatrix*mv;}`,fragmentShader:`uniform float uTime;uniform float uOpacity;varying vec3 vColor;varying float vPhase;varying float vLarge;void main(){vec2 p=gl_PointCoord-.5;float r=length(p);if(r>.5)discard;float core=1.0-smoothstep(.03,.3,r);float cross=exp(-abs(p.x)*46.0)*(1.0-smoothstep(.04,.48,abs(p.y)))+exp(-abs(p.y)*46.0)*(1.0-smoothstep(.04,.48,abs(p.x)));float diagonal=(exp(-abs(p.x-p.y)*56.0)+exp(-abs(p.x+p.y)*56.0))*(1.0-smoothstep(.04,.43,r))*.34;float twinkle=.68+.32*sin(uTime*(1.1+fract(vPhase)*2.4)+vPhase);float alpha=(core+vLarge*(cross+diagonal)*.72)*twinkle*uOpacity;if(alpha<.02)discard;gl_FragColor=vec4(vColor*(1.0+vLarge*.45),alpha);}`});
   starField = new THREE.Points(starGeometry, starMaterial);
   scene.add(starField);
 
@@ -1387,20 +1526,14 @@ function createScene() {
   scene.add(singularityFlash);
 
   auroraGroup = new THREE.Group();
-  [0x69f7db, 0x8f72ff, 0xff6fb3].forEach((color, index) => {
-    const ribbon = new THREE.Mesh(
-      new THREE.TorusKnotGeometry(1.2 + index * .35, .025 + index * .008, 220, 7, 2 + index, 3),
-      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: .24, wireframe: true, blending: THREE.AdditiveBlending }),
-    );
-    ribbon.rotation.set(index * .65, index * .8, index * .35);
-    ribbon.userData.expansionDirection = new THREE.Vector3(
-      Math.cos(index * Math.PI * 2 / 3 + .35),
-      Math.sin(index * Math.PI * 2 / 3 + .35),
-      (index - 1) * .38,
-    ).normalize();
-    auroraGroup.add(ribbon);
+  [0x69f7db,0x8f72ff,0xff6fb3].forEach((color,index)=>{
+    const ribbon=new THREE.Mesh(new THREE.TorusKnotGeometry(1.2+index*.35,.025+index*.008,220,7,2+index,3),new THREE.MeshBasicMaterial({color,transparent:true,opacity:.24,wireframe:true,blending:THREE.AdditiveBlending,depthWrite:false}));
+    ribbon.rotation.set(index*.65,index*.8,index*.35);ribbon.userData.expansionDirection=new THREE.Vector3(Math.cos(index*Math.PI*2/3+.35),Math.sin(index*Math.PI*2/3+.35),(index-1)*.38).normalize();auroraGroup.add(ribbon);
   });
   scene.add(auroraGroup);
+
+  primordialEnergyGroup=makePrimordialEnergy();
+  scene.add(primordialEnergyGroup);
 
   galaxyGroup = makeGalaxy();
   galaxyGroup.visible = false;
@@ -1497,6 +1630,8 @@ function applyScenario(time) {
   chaosThreads.visible = false;
   originEnergyCore.visible = false;
   starField.visible = true;
+  starField.material.uniforms.uTime.value=time;
+  starField.material.uniforms.uOpacity.value=.72;
   particles.visible = true;
   solarSystem.visible = false;
   galaxyGroup.visible = false;
@@ -1504,6 +1639,7 @@ function applyScenario(time) {
   planetMoon.visible = false;
   surfaceWorld.visible = false;
   auroraGroup.visible = false;
+  primordialEnergyGroup.visible=false;
   singularityFlash.visible = false;
   camera.position.x = 0;
   camera.position.y = .25;
@@ -1516,7 +1652,9 @@ function applyScenario(time) {
       scene.fog.color.set(0x000000);
       scene.fog.density = .045;
     }
-    starField.visible = p >= .292;
+    starField.visible = p >= .69;
+    starField.material.uniforms.uTime.value=time;
+    starField.material.uniforms.uOpacity.value=starField.visible?smooth(p,.69,.735)*.78:0;
     particles.visible = p >= .278;
     const energyCollapse = 1 - smooth(p, .18, .216);
     const buildupProgress = Math.min(p, .16);
@@ -1558,22 +1696,29 @@ function applyScenario(time) {
     singularityFlash.scale.setScalar(.02+flashBurst*13.5);
     singularityFlash.material.opacity = smooth(p,.241,.244)*(1-smooth(p,.247,.258));
 
+    primordialEnergyGroup.visible=p>.255&&p<.435;
+    const primordialExpansion=smooth(p,.255,.37);
+    const primordialFade=1-smooth(p,.365,.435);
+    primordialEnergyGroup.rotation.z=time*.025;
+    primordialEnergyGroup.userData.clouds.forEach((cloud,index)=>{cloud.material.uniforms.uTime.value=time*(.72+index*.08);cloud.material.uniforms.uExpansion.value=primordialExpansion*(.82+index*.07);cloud.material.uniforms.uOpacity.value=smooth(p,.255+index*.004,.29)*primordialFade;cloud.rotation.x=Math.sin(time*.08+index)*.08;});
+    primordialEnergyGroup.userData.bolts.forEach((bolt,index)=>{const pulse=Math.pow(Math.max(0,Math.sin(time*(3.4+index%3)+bolt.userData.phase)),24);bolt.material.opacity=primordialFade*smooth(p,.265,.305)*pulse*.72;});
+
     auroraGroup.visible = p > .292 && p < .42;
     const lawExpansion = smooth(p, .292, .405);
     const lawFade = 1 - smooth(p, .36, .42);
-    auroraGroup.scale.setScalar(.035 + lawExpansion * 3.65);
-    auroraGroup.rotation.y = time * .12;
-    auroraGroup.rotation.z = time * .055;
+    auroraGroup.scale.setScalar(.035+lawExpansion*3.65);
+    auroraGroup.rotation.y=time*.12;
+    auroraGroup.rotation.z=time*.055;
     auroraGroup.children.forEach((ribbon, index) => {
-      ribbon.position.copy(ribbon.userData.expansionDirection).multiplyScalar(lawExpansion * (1.15 + index * .62));
-      ribbon.material.opacity = (.13 + Math.sin(time * 1.1 + index) * .045) * smooth(p, .292, .32) * lawFade;
+      ribbon.position.copy(ribbon.userData.expansionDirection).multiplyScalar(lawExpansion*(1.15+index*.62));
+      ribbon.material.opacity=(.13+Math.sin(time*1.1+index)*.045)*smooth(p,.292,.32)*lawFade;
     });
 
-    nebulaBackdrop.visible = p >= .35 && p < .88;
+    nebulaBackdrop.visible = p >= .69;
     nebulaBackdrop.rotation.y = time * .0015;
     nebulaBackdrop.rotation.x = Math.sin(time * .001) * .01;
     nebulaBackdrop.children.forEach((cloud) => {
-      cloud.material.opacity = cloud.userData.baseOpacity * smooth(p, .35, .46) * (1 - smooth(p, .82, .88));
+      cloud.material.opacity = cloud.userData.baseOpacity * smooth(p, .69, .74) * (p<.91?(1-smooth(p,.88,.91)):0);
     });
 
     galaxyGroup.visible = p >= .425 && p < .755;
@@ -1590,55 +1735,58 @@ function applyScenario(time) {
       layer.material.opacity = .94 * galaxyReveal * (1 - smooth(p, .705, .755));
     });
 
-    solarSystem.visible = p >= .7 && p < .855;
+    solarSystem.visible = p >= .7 && p < .918;
     solarSystem.scale.setScalar(.03 + smooth(p, .7, .79) * 1.13);
     const centerTransition = 1 - smooth(p, .72, .77);
     solarSystem.position.set(3.4 * centerTransition, 1.1 * centerTransition, .1 * centerTransition);
     solarSystem.rotation.x = .48;
     solarSystem.rotation.z = -.16 + time * .015;
+    solarSystem.children.forEach((child)=>{if(child.userData.isOrbit)child.material.opacity=.32*(1-smooth(p,.875,.905));});
     solarSystem.userData.planets.forEach((body, index) => {
-      const orbitalClock = smooth(p, .7, .855) * 24;
+      const orbitalClock = smooth(p, .7, .905) * 31;
       const angle = body.userData.phase + orbitalClock * body.userData.orbitalSpeed;
       body.position.set(Math.cos(angle) * body.userData.radius, 0, Math.sin(angle) * body.userData.radius);
       body.userData.planet.rotation.y = p * (42 + index * 3);
       body.userData.moonPivot && (body.userData.moonPivot.rotation.y = p * 76);
       if (body.userData.saturnRings) body.userData.saturnRings.userData.dust.rotation.z = time * .045;
-      const focusBoost = index === 2 ? 1 + smooth(p, .775, .835) * 4.5 : 1;
-      const handoffFade = index === 2 ? 1 - smooth(p, .83, .852) : 1;
-      body.scale.setScalar(Math.max(.02, focusBoost * handoffFade));
+      if(index===2){
+        const atmosphereBirth=smooth(p,.79,.86);
+        body.userData.planet.material.uniforms.uTime.value=time;
+        body.userData.planet.material.uniforms.uMaturity.value=smooth(p,.755,.82);
+        body.userData.atmosphereShell.material.uniforms.uDensity.value=atmosphereBirth;
+        body.userData.cloudShell.material.uniforms.uTime.value=time;
+        body.userData.cloudShell.material.uniforms.uDensity.value=smooth(p,.815,.875)*.78;
+        body.userData.cloudShell.rotation.y=time*.025;
+      }
+      body.scale.setScalar(1);
     });
     solarSystem.updateMatrixWorld(true);
     solarSystem.userData.livingPlanet.getWorldPosition(focusPosition);
+    solarSystem.userData.sun.getWorldPosition(sunPosition);
 
-    const planetFocus = p >= .83 && p < .895;
-    const planetHandoff = smooth(p, .83, .87);
-    world.visible = planetFocus;
+    world.visible = false;
     worldMaterial.uniforms.uDeep.value.set("#123d65");
     worldMaterial.uniforms.uBright.value.set("#72d99a");
-    world.position.copy(focusPosition).multiplyScalar(1 - planetHandoff);
-    world.scale.setScalar(.08 + planetHandoff * 1.2);
-    world.rotation.y = p * 38;
-    atmosphere.material.opacity = .08 + smooth(p, .79, .87) * .2;
-    planetMoon.visible = planetFocus;
-    const moonAngle = p * 34;
-    planetMoon.position.copy(world.position).add(new THREE.Vector3(Math.cos(moonAngle) * 1.85, Math.sin(moonAngle * .63) * .3, Math.sin(moonAngle) * .75));
-    planetMoon.scale.setScalar(.08 + planetHandoff * .92);
+    planetMoon.visible = false;
 
-    surfaceWorld.visible = p >= .885;
+    surfaceWorld.visible = p >= .91;
     if (surfaceWorld.visible) {
-      const surfaceEntry = smooth(p, .885, .905);
-      const green = smooth(p, .93, .975);
-      const city = smooth(p, .978, 1);
+      const surfaceEntry = smooth(p, .91, .928);
+      const stormRise=smooth(p,.912,.925);
+      const storm=stormRise*(1-smooth(p,.968,.982));
+      const green = smooth(p, .956, .978);
+      const dinosaurAge=smooth(p,.979,.989)*(1-smooth(p,.993,.999));
+      const city = smooth(p, .993, 1);
       const cloudCycle = .42 + Math.sin(time*.11)*.18 + Math.sin(time*.037+2.1)*.12;
       const dayCycle = time*.018 + p*5;
       const sunHeight = .25 + Math.sin(dayCycle)*.55;
       const daylightAmount = smooth(sunHeight, -.08, .48);
-      const skyColor = new THREE.Color(0x24446b).lerp(new THREE.Color(0x75b9df), daylightAmount);
+      const skyColor = new THREE.Color(0x01040d).lerp(new THREE.Color(0x66b8ed),Math.pow(daylightAmount,.72)).lerp(new THREE.Color(0x202a33),storm*.66);
       renderer.setClearColor(skyColor, 1);
       scene.fog.color.copy(skyColor);
       scene.fog.density = .008 + (1-surfaceEntry)*.075;
       bloomPass.threshold = 1.05;
-      bloomPass.strength = .08;
+      bloomPass.strength = .08+storm*.22;
       bloomPass.radius = .15;
 
       surfaceTerrain.material.uniforms.uFormation.value=surfaceEntry;
@@ -1646,23 +1794,41 @@ function applyScenario(time) {
       surfaceWater.material.uniforms.uTime.value=time;
       surfaceWater.material.uniforms.uFormation.value=surfaceEntry;
       const sunDirection=new THREE.Vector3(Math.cos(dayCycle),sunHeight,Math.sin(dayCycle)).normalize();
+      surfaceTerrain.material.uniforms.uSunDirection.value.copy(sunDirection);
       surfaceWater.material.uniforms.uSunDirection.value.copy(sunDirection);
-      surfaceAtmosphere.material.uniforms.uDensity.value=surfaceEntry;
-      surfaceMountains.material.transparent=true;
-      surfaceMountains.material.opacity=surfaceEntry;
+      surfaceMountains.material.uniforms.uSunDirection.value.copy(sunDirection);
+      surfaceAtmosphere.visible=false;
+      surfaceMountains.material.uniforms.uOpacity.value=surfaceEntry;
       surfaceSnowCaps.material.transparent=true;
       surfaceSnowCaps.material.opacity=smooth(p,.91,.95);
       surfaceForest.material.opacity=green;
+      surfaceShrubs.material.opacity=green;
       surfaceCivilization.material.opacity=city;
+      surfaceRain.material.opacity=storm*(.58+Math.sin(time*4.1)*.16);
+      surfaceLightningGroup.children.forEach((stormCell,index)=>{const pulse=Math.pow(Math.max(0,Math.sin(time*(4.8+index%3)+stormCell.userData.phase)),18);stormCell.children.forEach((bolt,branchIndex)=>{bolt.material.opacity=storm*pulse*bolt.userData.strength*(1-branchIndex*.035);});});
+      surfaceVolcanoGroup.children.forEach((volcano)=>{volcano.children.forEach((part)=>{if(part.userData.isLava)part.material.opacity=storm*(.35+.65*Math.max(0,Math.sin(time*2.4+volcano.userData.phase)));});});
+      surfaceDinosaurs.children.forEach((dino)=>{const s=dino.userData.baseScale*dinosaurAge;dino.scale.setScalar(s);dino.rotation.y+=.0015*Math.sin(time+dino.userData.phase);});
       surfaceCloudLayer.visible=surfaceEntry>.16;
-      surfaceCloudLayer.children.forEach((cloudMesh,index)=>{cloudMesh.visible=cloudCycle+Math.sin(time*.025+cloudMesh.userData.phase)*.16>.31;});
-      surfaceCloudLayer.rotation.y=time*.012;
+      surfaceCloudLayer.material.uniforms.uSunDirection.value.copy(sunDirection);
+      surfaceCloudLayer.material.uniforms.uOpacity.value=surfaceEntry*(.82+storm*.16)*(.78+cloudCycle*.16);
+      surfaceCloudLayer.rotation.y=time*(.014+storm*.07);
       surfaceCloudLayer.rotation.z=Math.sin(time*.006)*.08;
-      surfaceWorld.userData.riverMaterial.opacity=surfaceEntry*.82;
+      surfaceRain.rotation.copy(surfaceCloudLayer.rotation);
+      starField.material.uniforms.uOpacity.value=surfaceEntry*(1-smooth(daylightAmount,.08,.32))*.82;
+      const nightVisibility=surfaceEntry*(1-smooth(daylightAmount,.02,.24));
+      nebulaBackdrop.children.forEach((cloud)=>{cloud.material.opacity=cloud.userData.baseOpacity*nightVisibility*.52;});
+      surfaceMilkyWay.position.copy(camera.position);
+      surfaceMilkyWay.rotation.set(.62,time*.002,.24);
+      surfaceMilkyWay.material.uniforms.uOpacity.value=nightVisibility*.78;
+      const moonOrbit=time*.037+p*3.1;
+      surfaceMoon.position.set(Math.cos(moonOrbit)*36,Math.sin(moonOrbit*.83)*18,Math.sin(moonOrbit)*36);
+      surfaceMoon.visible=nightVisibility>.08;
+      surfaceMoon.material.uniforms.uSunDirection.value.copy(sunDirection);
+      surfaceMoon.rotation.y=time*.015;
       daylight.position.copy(sunDirection).multiplyScalar(20);
       daylight.intensity=.55+daylightAmount*2.15;
 
-      const flightClock=time*.065+Math.max(0,p-.885)*52;
+      const flightClock=time*.065+Math.max(0,p-.91)*52;
       const latitude=Math.sin(flightClock*.37)*.62+Math.sin(flightClock*.13+1.7)*.2;
       const longitude=flightClock*.73+Math.sin(flightClock*.21)*.48;
       const horizonClock=flightClock+.34;
@@ -1673,6 +1839,11 @@ function applyScenario(time) {
       const terrainHeight=surfaceWorld.userData.terrainHeightAt(normal)*surfaceEntry;
       const droneAltitude=.8+Math.sin(flightClock*.29)*.13+Math.sin(flightClock*.071)*.09;
       camera.position.copy(normal).multiplyScalar(surfaceWorld.userData.radius+terrainHeight+droneAltitude+(1-surfaceEntry)*1.5);
+      surfaceSky.position.copy(camera.position);
+      surfaceSky.material.uniforms.uUp.value.copy(normal);
+      surfaceSky.material.uniforms.uSunDirection.value.copy(sunDirection);
+      surfaceSky.material.uniforms.uDaylight.value=daylightAmount;
+      surfaceSky.material.uniforms.uStorm.value=storm;
       const forward=horizonNormal.addScaledVector(normal,-horizonNormal.dot(normal)).normalize();
       const right=new THREE.Vector3().crossVectors(forward,normal).normalize();
       const target=camera.position.clone().addScaledVector(forward,3.6).addScaledVector(normal,-1.9);
@@ -1705,20 +1876,28 @@ function applyScenario(time) {
         const armZoom = smooth(p, .6, .72);
         camera.position.set(armZoom * 2.75, armZoom * .82, 7.7 - armZoom * 3.55);
         camera.lookAt(3.4 * armZoom, 1.1 * armZoom, 0);
-      } else if (p < .83) {
-        const systemZoom = smooth(p, .72, .83);
+      } else if (p < .855) {
+        const systemZoom = smooth(p, .72, .855);
         const widePosition = new THREE.Vector3(2.75, .82, 4.15);
-        const nearPlanet = focusPosition.clone().add(new THREE.Vector3(0, .16, .78));
-        camera.position.copy(widePosition.lerp(nearPlanet, systemZoom));
+        const radial=focusPosition.clone().sub(sunPosition).normalize();
+        const orbitalNormal=new THREE.Vector3(0,1,0).applyQuaternion(solarSystem.quaternion).normalize();
+        const tangent=new THREE.Vector3().crossVectors(orbitalNormal,radial).normalize();
+        if(tangent.dot(widePosition.clone().sub(focusPosition))<0)tangent.negate();
+        const nearPlanet=focusPosition.clone().addScaledVector(tangent,1.38).addScaledVector(radial,.34).addScaledVector(orbitalNormal,.38);
+        const control=sunPosition.clone().addScaledVector(tangent,3.15).addScaledVector(orbitalNormal,2.25).addScaledVector(radial,.7);
+        const inverse=1-systemZoom;
+        camera.position.copy(widePosition).multiplyScalar(inverse*inverse).addScaledVector(control,2*inverse*systemZoom).addScaledVector(nearPlanet,systemZoom*systemZoom);
         camera.lookAt(focusPosition);
       } else {
-        const handoffCamera = smooth(p, .83, .885);
-        camera.position.set(
-          focusPosition.x * (1 - handoffCamera),
-          .28 + focusPosition.y * (1 - handoffCamera),
-          .82 + handoffCamera * 2.7,
-        );
-        camera.lookAt(world.position);
+        const earthApproach = smooth(p, .855, .91);
+        const radial=focusPosition.clone().sub(sunPosition).normalize();
+        const orbitalNormal=new THREE.Vector3(0,1,0).applyQuaternion(solarSystem.quaternion).normalize();
+        const tangent=new THREE.Vector3().crossVectors(orbitalNormal,radial).normalize();
+        const reference=new THREE.Vector3(2.75,.82,4.15).sub(focusPosition);if(tangent.dot(reference)<0)tangent.negate();
+        const approachStart=focusPosition.clone().addScaledVector(tangent,1.38).addScaledVector(radial,.34).addScaledVector(orbitalNormal,.38);
+        const approachEnd=focusPosition.clone().addScaledVector(tangent,.52).addScaledVector(radial,.18).addScaledVector(orbitalNormal,.26);
+        camera.position.copy(approachStart.lerp(approachEnd,earthApproach));
+        camera.lookAt(focusPosition);
       }
     }
     const originMatterReveal=smooth(p,.278,.315);
@@ -1868,14 +2047,13 @@ function applyScenario(time) {
     const wave = Math.sin(time * 1.6 + i * .017) * .018 * (1 + p * 2);
     if (isGenesis) {
       const beforeBang = p < .246;
-      const radial = beforeBang
-        ? 1.85 * (1 - smooth(p, .01, .23)) + .008
-        : .008 + smooth(p, .278, .46) * 1.12;
+      const radial = beforeBang ? 1.85*(1-smooth(p,.01,.23))+.008 : .008+smooth(p,.278,.46)*1.12;
       const galaxy = smooth(p, .36, .62);
       const angle = baseAngle + (beforeBang ? p * 13 + time * (.04 + p * .38) : galaxy * radius * .38 + time * .075);
-      positions[i] = Math.cos(angle) * radius * radial + wave;
-      positions[i + 1] = Math.sin(angle) * radius * radial + wave;
-      positions[i + 2] = bz * radial * (1 - galaxy * .86);
+      const diskX=Math.cos(angle)*radius*radial+wave;const diskY=Math.sin(angle)*radius*radial+wave;const diskZ=bz*radial*(1-galaxy*.86);
+      if(!beforeBang&&p<.44){
+        const branch=(i/3)%3;const branchAngle=branch*Math.PI*2/3+.35;const dx=Math.cos(branchAngle),dy=Math.sin(branchAngle),dz=(branch-1)*.24;const length=radius*radial;const curl=Math.sin(radius*2.7+time*.8+branch)*(.06+length*.055);const lawX=dx*length-bz*.12+curl*(-dy);const lawY=dy*length+bx*.055+curl*dx;const lawZ=dz*length+by*.12;const lawToGalaxy=smooth(p,.395,.44);positions[i]=THREE.MathUtils.lerp(lawX,diskX,lawToGalaxy);positions[i+1]=THREE.MathUtils.lerp(lawY,diskY,lawToGalaxy);positions[i+2]=THREE.MathUtils.lerp(lawZ,diskZ,lawToGalaxy);
+      }else{positions[i]=diskX;positions[i+1]=diskY;positions[i+2]=diskZ;}
     } else if (isBlackHole) {
       const radial = 1 - smooth(p, .22, .94) * .91;
       const angle = baseAngle + smooth(p, .2, 1) * 10 + time * .32;
@@ -1920,6 +2098,16 @@ function restart() {
   playing.value = true;
 }
 
+async function enterDisplayMode(){
+  displayMode.value=true;
+  try{await observatory.value?.requestFullscreen?.();}catch{/* CSS fallback remains active when native fullscreen is unavailable. */}
+}
+
+function syncFullscreen(){
+  if(!document.fullscreenElement)displayMode.value=false;
+}
+function handleDisplayKey(event){if(event.key==="Escape"&&!document.fullscreenElement)displayMode.value=false;}
+
 function disposeObject(object) {
   object.traverse?.((child) => {
     child.geometry?.dispose?.();
@@ -1933,6 +2121,8 @@ watch(scenarioId, () => nextTick(() => applyScenario(performance.now() / 1000)))
 onMounted(() => {
   webGpuAvailable.value = "gpu" in navigator;
   createScene();
+  document.addEventListener("fullscreenchange",syncFullscreen);
+  document.addEventListener("keydown",handleDisplayKey);
   frame = requestAnimationFrame(animate);
 });
 
@@ -1943,14 +2133,17 @@ onUnmounted(() => {
   composer?.dispose?.();
   renderer?.dispose();
   renderer?.domElement?.remove();
+  document.removeEventListener("fullscreenchange",syncFullscreen);
+  document.removeEventListener("keydown",handleDisplayKey);
 });
 </script>
 
 <template>
-  <section class="cosmic-observatory" :style="{ '--cosmic-accent': scenario.accent }">
+  <section ref="observatory" class="cosmic-observatory" :class="{ 'display-mode': displayMode }" :style="{ '--cosmic-accent': scenario.accent }">
     <div ref="host" class="cosmic-canvas" aria-label="ฉากจำลองจักรวาลแบบสามมิติ" @wheel.prevent="handleWheel"></div>
     <div class="cosmic-vignette"></div>
     <div class="cosmic-bigbang-flash" :style="{ opacity: bigBangFlashOpacity }"></div>
+    <div class="cosmic-cloud-transition" :style="{ opacity: cloudTransitionOpacity }"></div>
 
     <header class="cosmic-header">
       <div>
@@ -1962,6 +2155,7 @@ onUnmounted(() => {
         <span class="renderer-chip"><i></i>{{ rendererLabel }}</span>
         <span class="renderer-chip" :class="{ ready: webGpuAvailable }">WebGPU {{ webGpuAvailable ? "พร้อมใช้" : "ไม่พร้อม" }}</span>
         <button type="button" class="renderer-chip zoom-chip" @click="userZoom = 1">ล้อเมาส์ · ZOOM {{ (1 / userZoom).toFixed(2) }}×</button>
+        <button type="button" class="renderer-chip display-chip" @click="enterDisplayMode">เต็มจอไร้ส่วนควบคุม</button>
         <button type="button" class="cosmic-close" @click="emit('close')" aria-label="ปิดฉากจำลอง">ปิด ×</button>
       </div>
     </header>
